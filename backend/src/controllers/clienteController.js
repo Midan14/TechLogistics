@@ -1,99 +1,93 @@
-const mysql = require('mysql');
-
-// Configuración de la base de datos (asegúrate de que sea la correcta para TechLogistics)
+const mysql = require('mysql2');
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'TechLogistics'
+  host: process.env.DB_HOST || 'localhost',
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME || 'TechLogistics',
+  port: process.env.DB_PORT || 3308,
 });
 
-// Función para obtener todos los clientes
+// Obtener todos los clientes
 const getAllClientes = (req, res) => {
-    const sql = 'SELECT * FROM Clientes';
-    db.query(sql, (err, result) => {
-        if (err) {
-            console.error('Error al obtener los clientes:', err);
-            res.status(500).json({ error: 'Error al obtener los clientes' });
-            return;
-        }
-        res.json(result);
-    });
+  db.query('SELECT * FROM Clientes', (err, result) => {
+    if (err) {
+      console.error('Error al obtener los clientes:', err);
+      return res.status(500).json({ error: 'Error al obtener los clientes' });
+    }
+    res.json(result);
+  });
 };
 
-// Función para obtener un cliente por ID
+// Obtener cliente por ID
 const getClienteById = (req, res) => {
-    const id = req.params.id;
-    const sql = 'SELECT * FROM Clientes WHERE idCliente = ?';
-    db.query(sql, [id], (err, result) => {
-        if (err) {
-            console.error('Error al obtener el cliente:', err);
-            res.status(500).json({ error: 'Error al obtener el cliente' });
-            return;
-        }
-        if (result.length === 0) {
-            res.status(404).json({ error: 'Cliente no encontrado' });
-            return;
-        }
-        res.json(result[0]);
-    });
+  const id = req.params.id;
+  db.query('SELECT * FROM Clientes WHERE idCliente = ?', [id], (err, result) => {
+    if (err) {
+      console.error('Error al obtener el cliente:', err);
+      return res.status(500).json({ error: 'Error al obtener el cliente' });
+    }
+    if (result.length === 0) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+    res.json(result[0]);
+  });
 };
 
-// Función para crear un nuevo cliente
+// Crear nuevo cliente
 const createCliente = (req, res) => {
-    const { nombre, direccion, telefono, email } = req.body;
-    const sql = 'INSERT INTO Clientes (nombre, direccion, telefono, email) VALUES (?, ?, ?, ?)';
-    db.query(sql, [nombre, direccion, telefono, email], (err, result) => {
-        if (err) {
-            console.error('Error al crear el cliente:', err);
-            res.status(500).json({ error: 'Error al crear el cliente' });
-            return;
-        }
-        res.status(201).json({ message: 'Cliente creado correctamente', id: result.insertId });
-    });
+  const { nombre, direccion, telefono, email } = req.body;
+
+  if (!nombre || !direccion || !telefono || !email) {
+    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  }
+
+  const sql = 'INSERT INTO Clientes (nombre, direccion, telefono, email) VALUES (?, ?, ?, ?)';
+  db.query(sql, [nombre, direccion, telefono, email], (err, result) => {
+    if (err) {
+      console.error('Error al crear el cliente:', err);
+      return res.status(500).json({ error: 'Error al crear el cliente' });
+    }
+    res.status(201).json({ message: 'Cliente creado correctamente', id: result.insertId });
+  });
 };
 
-// Función para actualizar un cliente existente
+// Actualizar cliente
 const updateCliente = (req, res) => {
-    const id = req.params.id;
-    const { nombre, direccion, telefono, email } = req.body;
-    const sql = 'UPDATE Clientes SET nombre = ?, direccion = ?, telefono = ?, email = ? WHERE idCliente = ?';
-    db.query(sql, [nombre, direccion, telefono, email, id], (err, result) => {
-        if (err) {
-            console.error('Error al actualizar el cliente:', err);
-            res.status(500).json({ error: 'Error al actualizar el cliente' });
-            return;
-        }
-        if (result.affectedRows === 0) {
-            res.status(404).json({ error: 'Cliente no encontrado' });
-            return;
-        }
-        res.json({ message: 'Cliente actualizado correctamente' });
-    });
+  const id = req.params.id;
+  const { nombre, direccion, telefono, email } = req.body;
+
+  const sql = 'UPDATE Clientes SET nombre = ?, direccion = ?, telefono = ?, email = ? WHERE idCliente = ?';
+  db.query(sql, [nombre, direccion, telefono, email, id], (err, result) => {
+    if (err) {
+      console.error('Error al actualizar el cliente:', err);
+      return res.status(500).json({ error: 'Error al actualizar el cliente' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+    res.json({ message: 'Cliente actualizado correctamente' });
+  });
 };
 
-// Función para eliminar un cliente
+// Eliminar cliente
 const deleteCliente = (req, res) => {
-    const id = req.params.id;
-    const sql = 'DELETE FROM Clientes WHERE idCliente = ?';
-    db.query(sql, [id], (err, result) => {
-        if (err) {
-            console.error('Error al eliminar el cliente:', err);
-            res.status(500).json({ error: 'Error al eliminar el cliente' });
-            return;
-        }
-        if (result.affectedRows === 0) {
-            res.status(404).json({ error: 'Cliente no encontrado' });
-            return;
-        }
-        res.json({ message: 'Cliente eliminado correctamente' });
-    });
+  const id = req.params.id;
+  db.query('DELETE FROM Clientes WHERE idCliente = ?', [id], (err, result) => {
+    if (err) {
+      console.error('Error al eliminar el cliente:', err);
+      return res.status(500).json({ error: 'Error al eliminar el cliente' });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Cliente no encontrado' });
+    }
+    res.json({ message: 'Cliente eliminado correctamente' });
+  });
 };
 
 module.exports = {
-    getAllClientes,
-    getClienteById,
-    createCliente,
-    updateCliente,
-    deleteCliente
+  getAllClientes,
+  getClienteById,
+  createCliente,
+  updateCliente,
+  deleteCliente,
 };

@@ -1,21 +1,51 @@
-import { Sequelize } from 'sequelize';
+const { Sequelize } = require('sequelize');
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME || 'TechLogistics',  // Nombre de la base de datos
-  process.env.DB_USER || 'root',      // Nombre de usuario de la base de datos
-  process.env.DB_PASSWORD || '',          // Contraseña de la base de datos
-  {
-    host: process.env.DB_HOST || 'localhost',        // Host de la base de datos
-    dialect: 'mysql',                         // El dialecto de la base de datos (mysql, postgres, etc.)
-    port: process.env.DB_PORT || 3308,           // Puerto de la base de datos
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    },
-    //logging: false
+// Configuración de la base de datos
+const dbConfig = {
+  database: 'TechLogistics',
+  username: 'techlogistics',
+  password: '',
+  host: '127.0.0.1',
+  port: 3308,
+  dialect: 'mysql',
+  dialectOptions: {
+    connectTimeout: 20000,
+    charset: 'utf8mb4',
+    timezone: '+00:00',
+    dateStrings: true
+  },
+  pool: {
+    max: 2,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  },
+  retry: {
+    max: 3
+  },
+  logging: false
+};
+
+// Crear instancia de Sequelize
+const sequelize = new Sequelize(dbConfig.database, dbConfig.username, dbConfig.password, dbConfig);
+
+// Función para probar la conexión
+const testConnection = async () => {
+  try {
+    console.log('Intentando conectar a la base de datos...');
+    await sequelize.authenticate();
+    console.log('✅ Conexión a la base de datos establecida correctamente');
+    return true;
+  } catch (error) {
+    console.error('❌ Error al conectar a la base de datos:', {
+      message: error.message,
+      name: error.name,
+      code: error.parent?.code,
+      errno: error.parent?.errno
+    });
+    return false;
   }
-);
+};
 
-export default sequelize;
+// Exportar la instancia de Sequelize
+module.exports = sequelize;

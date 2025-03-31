@@ -1,0 +1,10 @@
+docs/
+*.md
+frontend/
+.env
+package-lock.json
+
+
+
+
+
