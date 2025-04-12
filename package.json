@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "node-cache": "^5.1.2",
+    "winston-daily-rotate-file": "^5.0.0",
+    "winston-mongodb": "^6.0.0"
+  }
+}

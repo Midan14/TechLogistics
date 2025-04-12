@@ -1,51 +1,26 @@
-import React, { useState } from 'react';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 
-import FormularioPedido from './components/FormularioPedido.jsx';
-import SeguimientoEnvio from './components/SeguimientoEnvio.jsx';
-import ListaPedidos from './components/ListaPedidos.jsx';
-import DetallePedido from './components/DetallePedido.jsx';
+import FormularioPedido from './components/FormularioPedido';
+import ListaPedidos from './components/ListaPedidos';
+import SeguimientoEnvio from './components/SeguimientoEnvio';
 
-function Home() {
-  const [selectedPedido, setSelectedPedido] = useState(null);
+function App() {
+    return (
+        <Router>
+            <main className="container mx-auto px-4 py-6">
+                <h1 className="text-3xl font-bold mb-6 text-center">TechLogistics - Gestión de Pedidos</h1>
 
-  const handleSelectPedido = (pedido) => {
-    setSelectedPedido(pedido);
-  };
-
-  const handleBackToList = () => {
-    setSelectedPedido(null);
-  };
-
-  return (
-    <div>
-      <h1 className="text-3xl font-semibold text-center text-blue-600 mb-6">
-        Sistema de Gestión de Pedidos y Rastreo de Envíos
-      </h1>
-
-      {!selectedPedido ? (
-        <>
-          <section className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Registro de Pedidos</h2>
-            <FormularioPedido />
-          </section>
-
-          <section className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Seguimiento de Envíos</h2>
-            <SeguimientoEnvio />
-          </section>
-
-          <section className="bg-white rounded-lg shadow-md p-6 mb-8">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Lista de Pedidos</h2>
-            <ListaPedidos onSelectPedido={handleSelectPedido} />
-          </section>
-        </>
-      ) : (
-        <section className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <DetallePedido pedido={selectedPedido} onBack={handleBackToList} />
-        </section>
-      )}
-    </div>
-  );
+                <Routes>
+                    <Route path="/" element={<Navigate to="/formulario" />} />
+                    <Route path="/formulario" element={<FormularioPedido />} />
+                    <Route path="/pedidos" element={<ListaPedidos onSelectPedido={() => {}} />} />
+                    <Route path="/seguimiento" element={<SeguimientoEnvio />} />
+                    <Route path="*" element={<p className="text-center text-red-600">Página no encontrada</p>} />
+                </Routes>
+            </main>
+        </Router>
+    );
 }
 
-export default Home;
+export default App;

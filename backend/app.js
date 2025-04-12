@@ -1,98 +1,101 @@
-// Cargar variables de entorno
-require('dotenv').config();
+// app.js
 
-// Importaciones
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const sequelize = require('./src/config/database');
+import express from "express";
+import cors from "cors";
+import helmet from "helmet";
+import compression from "compression";
 
-// Crear app
+// Importaciones de config
+import logger, { logError, logInfo, httpLogger } from "./src/config/logger.js";
+import { testConnection } from "./src/config/database.js";
+import { validateEnvVars } from "./src/config/envVars.js";
+
+// Importaciones de middleware
+import { requestValidator } from "./src/middleware/requestValidator.js";
+import { errorHandler } from "./src/middleware/errorMiddleware.js";
+import { createRateLimit } from "./src/middleware/rateLimitMiddleware.js";
+
+// Importaciones de rutas
+import clienteRoutes from "./src/routes/clienteRoutes.js";
+import productoRoutes from "./src/routes/productoRoutes.js";
+import pedidoRoutes from "./src/routes/pedidoRoutes.js";
+import transportistaRoutes from "./src/routes/transportistaRoutes.js";
+import rutaRoutes from "./src/routes/rutaRoutes.js";
+import estadoEnvioRoutes from "./src/routes/estadoEnvioRoutes.js";
+
+// Crear la aplicación Express
 const app = express();
-const PORT = process.env.PORT || 5001;
 
-// Middleware
+// Validar variables de entorno
+try {
+  validateEnvVars();
+  logger.info("Variables de entorno validadas correctamente");
+} catch (error) {
+  logError("Error en la validación de variables de entorno", error);
+  process.exit(1);
+}
+
+// Middleware básico
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(helmet());
+app.use(compression());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-// Ruta base para probar
-app.get('/', (req, res) => {
-  res.status(200).json({ mensaje: 'API de TechLogistics funcionando correctamente' });
-});
+// Middleware de logging HTTP
+app.use(httpLogger);
 
-// Función para cargar las rutas
-const loadRoutes = () => {
-  const clienteRoutes = require('./src/routes/clienteRoutes');
-  const pedidoRoutes = require('./src/routes/pedidoRoutes');
-  const productoRoutes = require('./src/routes/productoRoutes');
-  const transportistaRoutes = require('./src/routes/transportistaRoutes');
-  const rutaRoutes = require('./src/routes/rutaRoutes');
-  const estadoEnvioRoutes = require('./src/routes/estadoEnvioRoutes');
+// Middleware de validación de requests
+app.use(requestValidator);
 
-  app.use('/clientes', clienteRoutes);
-  app.use('/pedidos', pedidoRoutes);
-  app.use('/productos', productoRoutes);
-  app.use('/transportistas', transportistaRoutes);
-  app.use('/rutas', rutaRoutes);
-  app.use('/estados-envio', estadoEnvioRoutes);
-};
+// Rate limiting
+app.use(createRateLimit());
 
-// Middleware de manejo de errores de base de datos
-app.use((err, req, res, next) => {
-  if (err.name === 'SequelizeConnectionError' || err.name === 'SequelizeConnectionRefusedError') {
-    console.error('Error de conexión a la base de datos:', err);
-    return res.status(503).json({ mensaje: 'Error de conexión a la base de datos' });
-  }
-  next(err);
-});
+// Rutas
+const API_PREFIX = process.env.API_PREFIX || "/api";
+app.use(`${API_PREFIX}/clientes`, clienteRoutes);
+app.use(`${API_PREFIX}/productos`, productoRoutes);
+app.use(`${API_PREFIX}/pedidos`, pedidoRoutes);
+app.use(`${API_PREFIX}/transportistas`, transportistaRoutes);
+app.use(`${API_PREFIX}/rutas`, rutaRoutes);
+app.use(`${API_PREFIX}/estados-envio`, estadoEnvioRoutes);
 
-// Middleware global de manejo de errores
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({ mensaje: 'Error interno del servidor' });
-});
+// Manejo de errores global
+app.use(errorHandler);
 
-// Función para iniciar el servidor
+// Iniciar el servidor
+const PORT = process.env.PORT || 5000;
 const startServer = async () => {
   try {
     // Probar conexión a la base de datos
-    await sequelize.authenticate();
-    console.log('✅ Conexión a la base de datos establecida correctamente');
+    await testConnection();
+    logInfo("Conexión a la base de datos establecida");
 
-    // Cargar rutas
-    loadRoutes();
-
-    // Iniciar servidor HTTP
-    const server = app.listen(PORT, () => {
-      console.log(`🚀 Servidor corriendo en el puerto ${PORT}`);
-    });
-
-    // Manejar errores del servidor
-    server.on('error', (error) => {
-      console.error('Error en el servidor:', error);
-      process.exit(1);
-    });
-
-    // Manejar señales de terminación
-    process.on('SIGTERM', () => {
-      console.log('Recibida señal SIGTERM. Cerrando servidor...');
-      server.close(() => {
-        console.log('Servidor cerrado.');
-        sequelize.close().then(() => {
-          console.log('Conexión a la base de datos cerrada.');
-          process.exit(0);
-        });
+    // Iniciar el servidor
+    app.listen(PORT, () => {
+      logInfo(`Servidor iniciado en puerto ${PORT}`, {
+        port: PORT,
+        environment: process.env.NODE_ENV,
+        apiPrefix: API_PREFIX,
       });
     });
-
   } catch (error) {
-    console.error('Error al iniciar el servidor:', error);
+    logError("Error al iniciar el servidor", error);
     process.exit(1);
   }
 };
 
-// Iniciar el servidor
 startServer();
 
-module.exports = app;
+// Manejo de señales de terminación
+process.on("SIGTERM", () => {
+  logger.info("Señal SIGTERM recibida. Cerrando servidor...");
+  process.exit(0);
+});
+
+process.on("SIGINT", () => {
+  logger.info("Señal SIGINT recibida. Cerrando servidor...");
+  process.exit(0);
+});
+
+export default app;

@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="ce8ca7e1-2186-452d-9301-47341d5dc623" name="Changes" comment="">
+      <change afterPath="$PROJECT_DIR$/.eslintrc.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/backend/src/config/envVars.js" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/qodana.yaml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/app.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/app.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/package-lock 2.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/backend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/server-mock.js" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/config/database.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/config/database.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/controllers/clienteController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/controllers/clienteController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/controllers/estadoEnvioController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/controllers/estadoEnvioController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/controllers/pedidoController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/controllers/pedidoController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/controllers/productoController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/controllers/productoController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/controllers/rutaController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/controllers/rutaController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/controllers/transportistaController.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/controllers/transportistaController.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/models/cliente.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/models/cliente.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/models/estadoEnvio.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/models/estadoEnvio.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/models/pedido.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/models/pedido.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/models/producto.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/models/producto.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/models/ruta.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/models/ruta.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/models/transportista.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/models/transportista.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/clienteRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/clienteRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/estadoEnvioRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/estadoEnvioRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/pedidoRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/pedidoRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/productoRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/productoRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/rutaRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/rutaRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/routes/transportistaRoutes.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/routes/transportistaRoutes.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backend/src/utils/errorHandler.js" beforeDir="false" afterPath="$PROJECT_DIR$/backend/src/utils/errorHandler.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/index.html" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/index.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/package.json" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/package.json" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/App.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/App.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/Home.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/Home.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/components/ListaPedidos.jsx" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/components/ListaPedidos.jsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/src/styles/styles.css" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/src/styles/styles.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/frontend/vite.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/frontend/vite.config.js" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ComposerSettings">
+    <execution />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="package" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitToolBoxStore">
+    <option name="recentBranches">
+      <RecentBranches>
+        <option name="branchesForRepo">
+          <list>
+            <RecentBranchesForRepo>
+              <option name="branches">
+                <list>
+                  <RecentBranch>
+                    <option name="branchName" value="main" />
+                    <option name="lastUsedInstant" value="1743564760" />
+                  </RecentBranch>
+                </list>
+              </option>
+              <option name="repositoryRootUrl" value="file://$PROJECT_DIR$" />
+            </RecentBranchesForRepo>
+          </list>
+        </option>
+      </RecentBranches>
+    </option>
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/backend/src/controllers/clienteController.js" root0="SKIP_INSPECTION" />
+  </component>
+  <component name="IlluminatedCloudWorkspaceSettings">
+    <option name="projectWorkspaceSettings">
+      <ProjectWorkspaceSettings>
+        <option name="anonymousApexSettings">
+          <AnonymousApexSettings>
+            <option name="savedDocuments">
+              <list>
+                <AnonymousApexSavedDocument>
+                  <option name="name" value="Anonymous Apex 1" />
+                </AnonymousApexSavedDocument>
+              </list>
+            </option>
+          </AnonymousApexSettings>
+        </option>
+      </ProjectWorkspaceSettings>
+    </option>
+  </component>
+  <component name="MacroExpansionManager">
+    <option name="directoryName" value="WUksb19Y" />
+  </component>
+  <component name="PhpDebugGeneral" listening_started="true" />
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectCodeStyleSettingsMigration">
+    <option name="version" value="2" />
+  </component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
+  <component name="ProjectId" id="2v8bwCqQVWCf5LdBQHQye2oSvtc" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "Node.js.app.js.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.go.formatter.settings.were.checked": "true",
+    "RunOnceActivity.go.migrated.go.modules.settings": "true",
+    "dart.analysis.tool.window.visible": "false",
+    "git-widget-placeholder": "main",
+    "go.import.settings.migrated": "true",
+    "javascript.nodejs.core.library.configured.version": "22.14.0",
+    "javascript.nodejs.core.library.typings.version": "22.14.0",
+    "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Applications/XAMPP/xamppfiles/htdocs/TechLogistics",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_interpreter_path": "/Users/miguelantonio/Library/Application Support/JetBrains/IntelliJIdea2024.3/node/versions/22.14.0/bin/node",
+    "nodejs_package_manager_path": "npm",
+    "npm.build.executor": "Run",
+    "npm.dev.executor": "Run",
+    "npm.lint.executor": "Run",
+    "npm.lint:fix.executor": "Run",
+    "npm.preview.executor": "Run",
+    "npm.start.executor": "Run",
+    "org.rust.cargo.project.model.impl.CargoExternalSystemProjectAware.subscribe.first.balloon": "",
+    "org.rust.first.attach.projects": "true",
+    "project.structure.last.edited": "项目",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "run.code.analysis.last.selected.profile": "pProject Default",
+    "settings.editor.selected.configurable": "configurable.tailwindcss",
+    "show.migrate.to.gradle.popup": "false",
+    "ts.external.directory.path": "/Users/miguelantonio/Applications/IntelliJ IDEA Ultimate.app/Contents/plugins/javascript-plugin/jsLanguageServicesImpl/external",
+    "vue.rearranger.settings.migration": "true"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="$PROJECT_DIR$" />
+    </key>
+  </component>
+  <component name="RunManager" selected="npm.start">
+    <configuration name="dev" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/frontend/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="dev" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <configuration name="lint" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/frontend/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="lint" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <configuration name="lint:fix" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/frontend/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="lint:fix" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <configuration name="preview" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/frontend/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="preview" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <configuration name="start" type="js.build_tools.npm" temporary="true" nameIsGenerated="true">
+      <package-json value="$PROJECT_DIR$/backend/package.json" />
+      <command value="run" />
+      <scripts>
+        <script value="start" />
+      </scripts>
+      <node-interpreter value="project" />
+      <envs />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="npm.start" />
+        <item itemvalue="npm.preview" />
+        <item itemvalue="npm.lint:fix" />
+        <item itemvalue="npm.lint" />
+        <item itemvalue="npm.dev" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="RustProjectSettings">
+    <option name="toolchainHomeDirectory" value="$USER_HOME$/.cargo/bin" />
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-jdk-9823dce3aa75-a94e463ab2e7-intellij.indexing.shared.core-IU-243.26053.27" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="ce8ca7e1-2186-452d-9301-47341d5dc623" name="Changes" comment="" />
+      <created>1743529888197</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1743529888197</updated>
+      <workItem from="1743529888199" duration="515000" />
+      <workItem from="1743530482287" duration="10579000" />
+      <workItem from="1743549661382" duration="57000" />
+      <workItem from="1743549754433" duration="11747000" />
+      <workItem from="1743562162456" duration="5685000" />
+      <workItem from="1743568328361" duration="18000" />
+      <workItem from="1743568357514" duration="4867000" />
+      <workItem from="1743599067954" duration="997000" />
+      <workItem from="1743602278092" duration="639000" />
+      <workItem from="1743603629940" duration="170000" />
+      <workItem from="1743604580545" duration="15000" />
+      <workItem from="1743604619361" duration="90000" />
+      <workItem from="1743604808821" duration="1640000" />
+      <workItem from="1743610596886" duration="233000" />
+      <workItem from="1743610865280" duration="320000" />
+      <workItem from="1743611332075" duration="1209000" />
+      <workItem from="1743649710114" duration="168000" />
+      <workItem from="1743650362767" duration="746000" />
+      <workItem from="1743651985400" duration="305000" />
+      <workItem from="1743653065439" duration="247000" />
+      <workItem from="1743653346875" duration="971000" />
+      <workItem from="1743655018701" duration="638000" />
+      <workItem from="1743655730339" duration="3000" />
+      <workItem from="1743655753711" duration="41000" />
+      <workItem from="1743655811225" duration="43000" />
+      <workItem from="1743655881224" duration="121000" />
+      <workItem from="1743656013776" duration="87000" />
+      <workItem from="1743656209532" duration="809000" />
+      <workItem from="1743657069651" duration="405000" />
+      <workItem from="1743657499608" duration="4635000" />
+      <workItem from="1743665408552" duration="46000" />
+      <workItem from="1743665478442" duration="143000" />
+      <workItem from="1743732116407" duration="5625000" />
+      <workItem from="1743789115831" duration="2380000" />
+      <workItem from="1743797584296" duration="13800000" />
+      <workItem from="1743827254687" duration="116000" />
+      <workItem from="1743827402048" duration="59000" />
+      <workItem from="1743827573302" duration="310000" />
+      <workItem from="1743827922096" duration="3356000" />
+      <workItem from="1743832004500" duration="1508000" />
+      <workItem from="1743861025156" duration="27000" />
+      <workItem from="1743962341178" duration="12038000" />
+      <workItem from="1744000259938" duration="1926000" />
+      <workItem from="1744263164139" duration="161000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VgoProject">
+    <settings-migrated>true</settings-migrated>
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="javascript">
+          <url>file://$PROJECT_DIR$/backend/src/models/index.js</url>
+          <line>22</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>
