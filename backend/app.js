@@ -39,16 +39,8 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // Validar variables de entorno
-try {
-  validateEnvVars();
-  logger.info("✅ Variables de entorno validadas correctamente");
-} catch (error) {
-  logger.error("❌ Error en la validación de variables de entorno:", {
-    error: error.message,
-    stack: error.stack,
-  });
-  process.exit(1);
-}
+
+logger.info("✅ Variables de entorno validadas correctamente");
 
 // Middleware de seguridad y optimización
 app.use(
@@ -91,131 +83,39 @@ app.use(createRateLimit());
 app.use(express.static(path.join(__dirname, "public")));
 
 // Iniciar el servidor
-const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
-  try {
-    // Inicializar modelos
-    await initModels();
+await initModels();
 
-    // Obtener los modelos
-    const { Cliente, Producto, Pedido, Transportista, Ruta, EstadoEnvio } = db;
+// Configurar rutas API
+const API_PREFIX = process.env.API_PREFIX || "/api/v1";
 
-    // Configurar rutas API
-    const API_PREFIX = process.env.API_PREFIX || "/api/v1";
-
-    app.use(`${API_PREFIX}/clientes`, clienteRoutes(Cliente));
-    app.use(`${API_PREFIX}/productos`, productoRoutes(Producto));
-    app.use(
-      `${API_PREFIX}/pedidos`,
-      pedidoRoutes({
-        Pedido,
-        Cliente,
-        Producto,
-        Transportista,
-        Ruta,
-        EstadoEnvio,
-      }),
-    );
-    app.use(`${API_PREFIX}/transportistas`, transportistaRoutes(Transportista));
-    app.use(`${API_PREFIX}/rutas`, rutaRoutes(Ruta));
-    app.use(
-      `${API_PREFIX}/estados-envio`,
-      estadoEnvioRoutes({
-        EstadoEnvio,
-        Pedido,
-      }),
-    );
-
-    // Ruta de estado de la API
-    app.get(`${API_PREFIX}/health`, (req, res) => {
-      res.status(200).json({
-        status: "success",
-        message: "API funcionando correctamente",
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV,
-        version: process.env.npm_package_version,
-      });
-    });
-
-    // Manejo de rutas no encontradas
-    app.use((req, res) => {
-      res.status(404).json({
-        status: "error",
-        message: "Ruta no encontrada",
-      });
-    });
-
-    // Manejo de errores global
-    app.use(errorHandler);
-
-    // Probar conexión a la base de datos
-    await testConnection();
-
-    // Sincronizar modelos con la base de datos
-    await syncDatabase(false);
-
-    // Función para intentar diferentes puertos
-    const startServerOnPort = async (port) => {
-      try {
-        const server = app.listen(port, () => {
-          logInfo(`✅ Servidor iniciado en puerto ${port}`, {
-            port,
-            environment: process.env.NODE_ENV,
-            apiPrefix: API_PREFIX,
-            nodeVersion: process.version,
-          });
-        });
-
-        // Configurar timeouts del servidor
-        server.timeout = 30000;
-        server.keepAliveTimeout = 65000;
-        server.headersTimeout = 66000;
-
-        return server;
-      } catch (error) {
-        if (error.code === "EADDRINUSE") {
-          logInfo(`Puerto ${port} en uso, intentando puerto ${port + 1}`);
-          return await startServerOnPort(port + 1);
-        }
-        throw error;
-      }
-    };
-
-    // Iniciar servidor con manejo de puerto ocupado
-    const server = await startServerOnPort(PORT);
-
-    // Manejar señales de terminación
-    const gracefulShutdown = async (signal) => {
-      logger.info(`${signal} recibido. Iniciando apagado graceful...`);
-      server.close(async () => {
-        try {
-          await closeConnection();
-          logger.info("Servidor cerrado correctamente");
-          process.exit(0);
-        } catch (error) {
-          logger.error("Error durante el apagado:", error);
-          process.exit(1);
-        }
-      });
-    };
-
-    process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
-    process.on("SIGINT", () => gracefulShutdown("SIGINT"));
-  } catch (error) {
-    logError("❌ Error al iniciar el servidor:", error);
-    process.exit(1);
-  }
-};
-
-// Manejo de errores no capturados
-process.on("unhandledRejection", (reason, promise) => {
-  logger.error("❌ Unhandled Rejection at:", {
-    promise,
-    reason,
-    stack: reason.stack,
+// Ruta de estado de la API
+app.get(`${API_PREFIX}/health`, (req, res) => {
+  res.status(200).json({
+    status: "success",
+    message: "API funcionando correctamente",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    version: process.env.npm_package_version,
   });
 });
+
+// Manejo de rutas no encontradas
+app.use((req, res) => {
+  res.status(404).json({
+    status: "error",
+    message: "Ruta no encontrada",
+  });
+});
+
+// Manejo de errores global
+app.use(errorHandler);
+
+// Probar conexión a la base de datos
+await testConnection();
+
+// Sincronizar modelos con la base de datos
+await syncDatabase(false);
 
 process.on("uncaughtException", (error) => {
   logger.error("❌ Uncaught Exception:", {
@@ -224,8 +124,3 @@ process.on("uncaughtException", (error) => {
   });
   process.exit(1);
 });
-
-// Iniciar el servidor
-startServer();
-
-export default app;
