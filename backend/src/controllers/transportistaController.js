@@ -1,253 +1,135 @@
-// src/controllers/transportistaController.js
-
+// controllers/transportistaController.js
 import { Op } from "sequelize";
 import { logError, logInfo } from "../config/logger.js";
 
-// Utilidades para reducir código repetitivo
-const handleError = (res, error, message) => {
-  logError(message, error);
-  res.status(500).json({ status: "error", message, error: error.message });
-};
-
-const notFound = (res) => {
-  return res
-    .status(404)
-    .json({ status: "error", message: "Transportista no encontrado" });
-};
-
 /**
- * Crea un controlador para gestionar transportistas
+ * Controlador para gestionar transportistas
+ * @param {Object} models - Modelos Sequelize requeridos
+ * @returns {Object} Objeto con métodos del controlador
  */
-const createTransportistaController = (Transportista, models = {}) => {
-  const { Ruta, Pedido } = models;
 
+const createTransportistaController = ({ Transportista, Pedido }) => {
   /**
-   * Obtiene todos los transportistas con filtros básicos
+   * Obtiene todos los transportistas
+   * @route GET /api/transportistas
    */
   const obtenerTransportistas = async (req, res) => {
     try {
-      const { page = 1, limit = 10, activo, vehiculo } = req.query;
+      const { disponible, zona } = req.query;
 
-      // Filtros básicos
+      // Construir condiciones según los filtros
       const where = {};
-      if (activo !== undefined) where.activo = activo === "true";
-      if (vehiculo) where.vehiculo = { [Op.like]: `%${vehiculo}%` };
+      if (disponible !== undefined) {
+        where.disponible = disponible === "true";
+      }
 
-      // Ejecutar consulta paginada
-      const { count, rows: transportistas } =
-        await Transportista.findAndCountAll({
-          where,
-          limit: parseInt(limit),
-          offset: (parseInt(page) - 1) * parseInt(limit),
-          order: [["nombre", "ASC"]],
-        });
+      if (zona) {
+        where.zona_cobertura = { [Op.like]: `%${zona}%` };
+      }
+
+      const transportistas = await Transportista.findAll({
+        where,
+        order: [["nombre", "ASC"]],
+      });
 
       res.json({
         status: "success",
         data: transportistas,
-        meta: { total: count, page: parseInt(page), limit: parseInt(limit) },
       });
     } catch (error) {
-      handleError(res, error, "Error al obtener transportistas");
+      logError("Error al obtener transportistas", error);
+      res.status(500).json({
+        status: "error",
+        message: "Error al obtener transportistas",
+        error: error.message,
+      });
     }
   };
 
   /**
-   * Obtiene transportistas disponibles para asignación
+   * Obtiene un transportista por ID
+   * @route GET /api/transportistas/:id
    */
-  const obtenerTransportistasDisponibles = async (req, res) => {
+  const obtenerTransportistaPorId = async (req, res) => {
     try {
-      // Si no hay modelo Pedido, devolver todos los transportistas activos
-      if (!Pedido) {
-        const transportistas = await Transportista.findAll({
-          where: { activo: true },
-          order: [["nombre", "ASC"]],
-        });
+      const transportista = await Transportista.findByPk(req.params.id);
 
-        return res.json({
-          status: "success",
-          data: transportistas,
-          meta: { count: transportistas.length },
-        });
-      }
-
-      // Si hay modelo Pedido, hacer un análisis más detallado
-      const transportistas = await Transportista.findAll({
-        where: { activo: true },
-        order: [["nombre", "ASC"]],
-      });
-
-      // Para cada transportista, verificar disponibilidad
-      const transportistasConDisponibilidad = await Promise.all(
-        transportistas.map(async (transportista) => {
-          // Contar pedidos activos para este transportista
-          const pedidosActivos = await Pedido.count({
-            where: {
-              transportistaId: transportista.id,
-              estado: {
-                [Op.in]: ["PENDIENTE", "EN_PREPARACION", "EN_RUTA"],
-              },
-            },
-          });
-
-          const capacidadMaxima = transportista.capacidad_maxima_pedidos || 10;
-          const disponible = pedidosActivos < capacidadMaxima;
-
-          return {
-            ...transportista.toJSON(),
-            pedidosActivos,
-            capacidadMaxima,
-            disponible,
-          };
-        }),
-      );
-
-      // Filtrar solo los disponibles si se solicita
-      const { soloDisponibles } = req.query;
-      const resultado =
-        soloDisponibles === "true"
-          ? transportistasConDisponibilidad.filter((t) => t.disponible)
-          : transportistasConDisponibilidad;
-
-      res.json({
-        status: "success",
-        data: resultado,
-        meta: { count: resultado.length },
-      });
-    } catch (error) {
-      handleError(res, error, "Error al obtener transportistas disponibles");
-    }
-  };
-
-  /**
-   * Obtiene rutas asignadas a un transportista
-   */
-  const obtenerRutasTransportista = async (req, res) => {
-    try {
-      const { id } = req.params;
-
-      // Verificar que el transportista existe
-      const transportista = await Transportista.findByPk(id);
-      if (!transportista) return notFound(res);
-
-      // Si no hay modelo Ruta disponible
-      if (!Ruta) {
-        return res.status(501).json({
+      if (!transportista) {
+        return res.status(404).json({
           status: "error",
-          message: "Funcionalidad no implementada",
+          message: "Transportista no encontrado",
         });
       }
 
-      // Buscar rutas del transportista
-      const rutas = await Ruta.findAll({
-        where: {
-          transportistaId: id,
-          activa: true,
-        },
-        order: [["origen", "ASC"]],
-      });
-
       res.json({
         status: "success",
-        data: rutas,
-        meta: {
-          transportistaId: parseInt(id),
-          nombre: transportista.nombre,
-          count: rutas.length,
-        },
+        data: transportista,
       });
     } catch (error) {
-      handleError(res, error, "Error al obtener rutas del transportista");
-    }
-  };
-
-  /**
-   * Obtiene pedidos asignados a un transportista
-   */
-  const obtenerPedidosTransportista = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { estado } = req.query;
-
-      // Verificar que el transportista existe
-      const transportista = await Transportista.findByPk(id);
-      if (!transportista) return notFound(res);
-
-      // Si no hay modelo Pedido disponible
-      if (!Pedido) {
-        return res.status(501).json({
-          status: "error",
-          message: "Funcionalidad no implementada",
-        });
-      }
-
-      // Construir condiciones de búsqueda
-      const where = { transportistaId: id };
-      if (estado) {
-        where.estado = estado;
-      }
-
-      // Buscar pedidos del transportista
-      const pedidos = await Pedido.findAll({
-        where,
-        order: [["fechaPedido", "DESC"]],
+      logError("Error al obtener transportista", error);
+      res.status(500).json({
+        status: "error",
+        message: "Error al obtener transportista",
+        error: error.message,
       });
-
-      res.json({
-        status: "success",
-        data: pedidos,
-        meta: {
-          transportistaId: parseInt(id),
-          nombre: transportista.nombre,
-          count: pedidos.length,
-        },
-      });
-    } catch (error) {
-      handleError(res, error, "Error al obtener pedidos del transportista");
     }
   };
 
   /**
    * Crea un nuevo transportista
+   * @route POST /api/transportistas
    */
   const crearTransportista = async (req, res) => {
     try {
-      const { nombre, apellido, documento, telefono, email, vehiculo, placa } =
-        req.body;
-
-      // Crear el transportista
-      const nuevoTransportista = await Transportista.create({
+      const {
         nombre,
-        apellido,
-        documento,
+        placa,
         telefono,
         email,
-        vehiculo,
+        tipo_vehiculo,
+        capacidad_carga,
+        zona_cobertura,
+      } = req.body;
+
+      // Crear el nuevo transportista
+      const nuevoTransportista = await Transportista.create({
+        nombre,
         placa,
-        activo: true,
+        telefono,
+        email,
+        tipo_vehiculo: tipo_vehiculo || "Automóvil",
+        capacidad_carga,
+        zona_cobertura,
+        disponible: true,
+        calificacion: 5.0,
       });
 
-      logInfo("Transportista creado exitosamente", {
-        id: nuevoTransportista.id,
+      logInfo("Nuevo transportista creado", {
+        id: nuevoTransportista.id_transportista,
+        nombre: nuevoTransportista.nombre,
       });
 
       res.status(201).json({
         status: "success",
-        message: "Transportista creado exitosamente",
+        message: "Transportista creado correctamente",
         data: nuevoTransportista,
       });
     } catch (error) {
       logError("Error al crear transportista", error);
 
-      // Error específico para restricciones únicas
-      if (error.name === "SequelizeUniqueConstraintError") {
-        return res.status(409).json({
+      // Manejar errores de validación
+      if (error.name === "SequelizeValidationError") {
+        return res.status(400).json({
           status: "error",
-          message: "Ya existe un transportista con este documento o placa",
+          message: "Error de validación",
+          errors: error.errors.map((e) => ({
+            field: e.path,
+            message: e.message,
+          })),
         });
       }
 
-      res.status(400).json({
+      res.status(500).json({
         status: "error",
         message: "Error al crear transportista",
         error: error.message,
@@ -256,86 +138,49 @@ const createTransportistaController = (Transportista, models = {}) => {
   };
 
   /**
-   * Obtiene un transportista por ID
-   */
-  const obtenerTransportistaPorId = async (req, res) => {
-    try {
-      const transportista = await Transportista.findByPk(req.params.id);
-      if (!transportista) return notFound(res);
-
-      res.json({
-        status: "success",
-        data: transportista,
-      });
-    } catch (error) {
-      handleError(res, error, "Error al obtener transportista");
-    }
-  };
-
-  /**
-   * Activa un transportista
-   */
-  const activarTransportista = async (req, res) => {
-    try {
-      const transportista = await Transportista.findByPk(req.params.id);
-      if (!transportista) return notFound(res);
-
-      await transportista.update({ activo: true });
-
-      logInfo("Transportista activado", { id: transportista.id });
-
-      res.json({
-        status: "success",
-        message: "Transportista activado correctamente",
-        data: {
-          id: transportista.id,
-          nombre: transportista.nombre,
-          activo: true,
-        },
-      });
-    } catch (error) {
-      handleError(res, error, "Error al activar transportista");
-    }
-  };
-
-  /**
-   * Desactiva un transportista
-   */
-  const desactivarTransportista = async (req, res) => {
-    try {
-      const transportista = await Transportista.findByPk(req.params.id);
-      if (!transportista) return notFound(res);
-
-      await transportista.update({ activo: false });
-
-      logInfo("Transportista desactivado", { id: transportista.id });
-
-      res.json({
-        status: "success",
-        message: "Transportista desactivado correctamente",
-        data: {
-          id: transportista.id,
-          nombre: transportista.nombre,
-          activo: false,
-        },
-      });
-    } catch (error) {
-      handleError(res, error, "Error al desactivar transportista");
-    }
-  };
-
-  /**
    * Actualiza un transportista existente
+   * @route PUT /api/transportistas/:id
    */
   const actualizarTransportista = async (req, res) => {
     try {
+      const {
+        nombre,
+        placa,
+        telefono,
+        email,
+        tipo_vehiculo,
+        capacidad_carga,
+        zona_cobertura,
+        disponible,
+        calificacion,
+      } = req.body;
+
+      // Buscar el transportista a actualizar
       const transportista = await Transportista.findByPk(req.params.id);
-      if (!transportista) return notFound(res);
+      if (!transportista) {
+        return res.status(404).json({
+          status: "error",
+          message: "Transportista no encontrado",
+        });
+      }
 
       // Actualizar el transportista
-      await transportista.update(req.body);
+      await transportista.update({
+        nombre,
+        placa,
+        telefono,
+        email,
+        tipo_vehiculo,
+        capacidad_carga,
+        zona_cobertura,
+        disponible,
+        calificacion,
+      });
 
-      logInfo("Transportista actualizado", { id: transportista.id });
+      logInfo("Transportista actualizado", {
+        id: transportista.id_transportista,
+        cambios: req.body,
+      });
 
       res.json({
         status: "success",
@@ -344,7 +189,20 @@ const createTransportistaController = (Transportista, models = {}) => {
       });
     } catch (error) {
       logError("Error al actualizar transportista", error);
-      res.status(400).json({
+
+      // Manejar errores de validación
+      if (error.name === "SequelizeValidationError") {
+        return res.status(400).json({
+          status: "error",
+          message: "Error de validación",
+          errors: error.errors.map((e) => ({
+            field: e.path,
+            message: e.message,
+          })),
+        });
+      }
+
+      res.status(500).json({
         status: "error",
         message: "Error al actualizar transportista",
         error: error.message,
@@ -354,43 +212,46 @@ const createTransportistaController = (Transportista, models = {}) => {
 
   /**
    * Elimina un transportista
+   * @route DELETE /api/transportistas/:id
    */
   const eliminarTransportista = async (req, res) => {
     try {
       const transportista = await Transportista.findByPk(req.params.id);
-      if (!transportista) return notFound(res);
-
-      // Verificar si tiene pedidos o rutas asociadas
-      let tieneAsociaciones = false;
-
-      if (Pedido) {
-        const pedidosCount = await Pedido.count({
-          where: { transportistaId: req.params.id },
+      if (!transportista) {
+        return res.status(404).json({
+          status: "error",
+          message: "Transportista no encontrado",
         });
-        if (pedidosCount > 0) tieneAsociaciones = true;
       }
 
-      if (!tieneAsociaciones && Ruta) {
-        const rutasCount = await Ruta.count({
-          where: { transportistaId: req.params.id },
-        });
-        if (rutasCount > 0) tieneAsociaciones = true;
-      }
+      // Verificar si el transportista tiene pedidos asignados
+      const pedidosAsignados = await Pedido.count({
+        where: { transportistaId: req.params.id },
+      });
 
-      if (tieneAsociaciones) {
-        // Si tiene asociaciones, solo desactivar
-        await transportista.update({ activo: false });
+      if (pedidosAsignados > 0) {
+        // Marcar como no disponible en lugar de eliminar
+        await transportista.update({ disponible: false });
+
+        logInfo("Transportista marcado como no disponible", {
+          id: transportista.id_transportista,
+          pedidosAsociados: pedidosAsignados,
+        });
 
         return res.json({
           status: "success",
           message:
-            "Transportista marcado como inactivo porque tiene pedidos o rutas asociadas",
-          data: { id: transportista.id, activo: false },
+            "Transportista marcado como no disponible porque tiene pedidos asociados",
+          data: { id: transportista.id_transportista, disponible: false },
         });
       }
 
-      // Si no tiene asociaciones, eliminar completamente
+      // Si no tiene pedidos, eliminar completamente
       await transportista.destroy();
+
+      logInfo("Transportista eliminado", {
+        id: req.params.id,
+      });
 
       res.json({
         status: "success",
@@ -398,21 +259,47 @@ const createTransportistaController = (Transportista, models = {}) => {
         data: { id: parseInt(req.params.id) },
       });
     } catch (error) {
-      handleError(res, error, "Error al eliminar transportista");
+      logError("Error al eliminar transportista", error);
+      res.status(500).json({
+        status: "error",
+        message: "Error al eliminar transportista",
+        error: error.message,
+      });
+    }
+  };
+
+  /**
+   * Obtiene transportistas disponibles para asignación
+   * @route GET /api/transportistas/disponibles
+   */
+  const obtenerTransportistasDisponibles = async (req, res) => {
+    try {
+      const transportistas = await Transportista.findAll({
+        where: { disponible: true },
+        order: [["calificacion", "DESC"]],
+      });
+
+      res.json({
+        status: "success",
+        data: transportistas,
+      });
+    } catch (error) {
+      logError("Error al obtener transportistas disponibles", error);
+      res.status(500).json({
+        status: "error",
+        message: "Error al obtener transportistas disponibles",
+        error: error.message,
+      });
     }
   };
 
   return {
     obtenerTransportistas,
-    crearTransportista,
     obtenerTransportistaPorId,
+    crearTransportista,
     actualizarTransportista,
     eliminarTransportista,
     obtenerTransportistasDisponibles,
-    obtenerRutasTransportista,
-    obtenerPedidosTransportista,
-    activarTransportista,
-    desactivarTransportista,
   };
 };
 

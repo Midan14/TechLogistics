@@ -1,4 +1,5 @@
-// models/index.js
+// src/models/index.js
+
 import fs from "fs/promises";
 import path, { dirname } from "path";
 import { Sequelize, DataTypes } from "sequelize";
@@ -10,7 +11,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const basename = path.basename(__filename);
 
-// Obtener configuración de la base de datos desde variables de entorno
+// Configuración de la base de datos desde variables de entorno
 const dbConfig = {
   database: process.env.DB_NAME || "TechLogistics",
   username: process.env.DB_USER || "root",
@@ -21,7 +22,6 @@ const dbConfig = {
   logging: process.env.NODE_ENV === "development" ? console.log : false,
   dialectOptions: {
     connectTimeout: parseInt(process.env.DB_CONNECT_TIMEOUT || "20000"),
-    // No usar sockets en Windows para evitar problemas
     socketPath: process.platform === "win32" ? undefined : undefined,
   },
   pool: {
@@ -47,64 +47,68 @@ const db = {
   Sequelize,
 };
 
-// Cargar todos los modelos dinámicamente
+// Orden específico de carga de modelos
+const modelOrder = [
+  "Cliente.js",
+  "Producto.js",
+  "Transportista.js",
+  "EstadoEnvio.js",
+  "Ruta.js",
+  "Pedido.js",
+];
+
+// Cargar todos los modelos en orden específico
 const loadModels = async () => {
   try {
-    // Leer todos los archivos en el directorio
-    const files = await fs.readdir(__dirname);
+    // Cargar modelos en el orden especificado
+    for (const modelFile of modelOrder) {
+      const filePath = pathToFileURL(path.join(__dirname, modelFile)).href;
 
-    // Filtrar archivos de modelo (excluyendo index.js)
-    const modelFiles = files.filter(
-      (file) =>
-        file.endsWith(".js") && file !== basename && !file.endsWith(".test.js"),
-    );
-
-    // Cargar cada modelo
-    for (const file of modelFiles) {
       try {
-        // Convertir ruta a formato URL para import dinámico
-        const filePath = pathToFileURL(path.join(__dirname, file)).href;
-
-        // Importar el modelo
         const { default: defineModel } = await import(filePath);
 
-        // Verificar que el modelo exporte una función
         if (typeof defineModel !== "function") {
-          console.error(`⚠️ El archivo ${file} no exporta una función válida.`);
+          logError(`El archivo ${modelFile} no exporta una función válida`);
           continue;
         }
 
-        // Inicializar el modelo con sequelize y DataTypes
         const model = defineModel(sequelize, DataTypes);
 
-        // Verificar que el modelo se haya definido correctamente
         if (!model || !model.name) {
-          console.error(`⚠️ El modelo en ${file} no se definió correctamente.`);
+          logError(`El modelo en ${modelFile} no se definió correctamente`);
           continue;
         }
 
-        // Añadir el modelo al objeto db
         db[model.name] = model;
         logInfo(`Modelo ${model.name} cargado correctamente`);
-      } catch (modelError) {
-        logError(`Error al cargar el modelo ${file}`, modelError);
+      } catch (error) {
+        logError(`Error al cargar el modelo ${modelFile}:`, error);
+        throw error;
       }
     }
 
-    // Establecer asociaciones entre modelos
-    Object.keys(db).forEach((modelName) => {
+    // Establecer asociaciones después de que todos los modelos estén cargados
+    for (const modelName of Object.keys(db)) {
       if (
         db[modelName].associate &&
         typeof db[modelName].associate === "function"
       ) {
-        db[modelName].associate(db);
-        logInfo(`Asociaciones establecidas para ${modelName}`);
+        try {
+          db[modelName].associate(db);
+          logInfo(`Asociaciones establecidas para ${modelName}`);
+        } catch (error) {
+          logError(
+            `Error al establecer asociaciones para ${modelName}:`,
+            error,
+          );
+          throw error;
+        }
       }
-    });
+    }
 
     return db;
   } catch (error) {
-    logError("Error al cargar los modelos", error);
+    logError("Error al cargar los modelos:", error);
     throw error;
   }
 };
@@ -120,18 +124,22 @@ export const initModels = async () => {
     logInfo("Conexión a la base de datos establecida correctamente");
 
     // Registrar modelos disponibles
-    logInfo("Modelos inicializados correctamente", {
-      modelos: Object.keys(db).filter(
-        (k) => k !== "sequelize" && k !== "Sequelize",
-      ),
-    });
+    const modelNames = Object.keys(db).filter(
+      (k) => k !== "sequelize" && k !== "Sequelize",
+    );
+    logInfo("Modelos inicializados correctamente", { modelos: modelNames });
 
     return db;
   } catch (error) {
-    logError("Error al inicializar modelos", error);
+    logError("Error al inicializar modelos:", error);
     throw error;
   }
 };
+
+// Manejador de errores de proceso
+process.on("unhandledRejection", (error) => {
+  logError("Unhandled Rejection:", error);
+});
 
 // Exportar el objeto db con todos los modelos y la instancia de sequelize
 export { sequelize, Sequelize };

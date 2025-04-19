@@ -1,6 +1,5 @@
 // src/controllers/estadoEnvioController.js
 
-import { Op } from "sequelize";
 import { logError, logInfo } from "../config/logger.js";
 
 /**
@@ -48,58 +47,8 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
    */
   const inicializarEstadosEnvio = async (req, res) => {
     try {
-      const estadosDefault = [
-        {
-          estado: "PENDIENTE",
-          descripcion: "Pedido registrado pendiente de preparación",
-          color: "#FFA500",
-          orden: 1,
-          activo: true,
-        },
-        {
-          estado: "PREPARACION",
-          descripcion: "Pedido en proceso de preparación",
-          color: "#0000FF",
-          orden: 2,
-          activo: true,
-        },
-        {
-          estado: "EN_RUTA",
-          descripcion: "Pedido en ruta de entrega",
-          color: "#008000",
-          orden: 3,
-          activo: true,
-        },
-        {
-          estado: "ENTREGADO",
-          descripcion: "Pedido entregado exitosamente",
-          color: "#008000",
-          orden: 4,
-          activo: true,
-        },
-        {
-          estado: "NO_ENTREGADO",
-          descripcion: "Entrega fallida",
-          color: "#FF0000",
-          orden: 5,
-          activo: true,
-        },
-        {
-          estado: "CANCELADO",
-          descripcion: "Pedido cancelado",
-          color: "#FF0000",
-          orden: 6,
-          activo: true,
-        },
-      ];
-
-      // Crear estados si no existen
-      for (const estadoData of estadosDefault) {
-        await EstadoEnvio.findOrCreate({
-          where: { estado: estadoData.estado },
-          defaults: estadoData,
-        });
-      }
+      // Usando el método del modelo
+      await EstadoEnvio.inicializarEstados();
 
       // Obtener todos los estados después de inicializar
       const estados = await EstadoEnvio.findAll({
@@ -133,7 +82,7 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
 
       // Verificar si ya existe un estado con el mismo código
       const estadoExistente = await EstadoEnvio.findOne({
-        where: { estado },
+        where: { nombre_estado: estado },
       });
 
       if (estadoExistente) {
@@ -145,7 +94,7 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
 
       // Crear el nuevo estado
       const nuevoEstado = await EstadoEnvio.create({
-        estado,
+        nombre_estado: estado,
         descripcion,
         color: color || "#000000",
         orden: orden || 0,
@@ -153,8 +102,8 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
       });
 
       logInfo("Nuevo estado de envío creado", {
-        id: nuevoEstado.id,
-        estado: nuevoEstado.estado,
+        id: nuevoEstado.id_estado,
+        estado: nuevoEstado.nombre_estado,
       });
 
       res.status(201).json({
@@ -249,7 +198,7 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
         status: "success",
         data: pedidos,
         meta: {
-          estado: estado.estado,
+          estado: estado.nombre_estado,
           totalItems: count,
           totalPages,
           currentPage: parseInt(page),
@@ -286,9 +235,9 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
       }
 
       // Si cambia el código, verificar que no exista otro con ese código
-      if (estado && estado !== estadoEnvio.estado) {
+      if (estado && estado !== estadoEnvio.nombre_estado) {
         const estadoExistente = await EstadoEnvio.findOne({
-          where: { estado },
+          where: { nombre_estado: estado },
         });
 
         if (estadoExistente) {
@@ -301,7 +250,7 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
 
       // Actualizar el estado
       await estadoEnvio.update({
-        estado,
+        nombre_estado: estado,
         descripcion,
         color,
         orden,
@@ -309,7 +258,7 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
       });
 
       logInfo("Estado de envío actualizado", {
-        id: estadoEnvio.id,
+        id: estadoEnvio.id_estado,
         cambios: req.body,
       });
 
@@ -365,7 +314,7 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
         await estadoEnvio.update({ activo: false });
 
         logInfo("Estado de envío marcado como inactivo", {
-          id: estadoEnvio.id,
+          id: estadoEnvio.id_estado,
           pedidosAsociados,
         });
 
@@ -373,7 +322,7 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
           status: "success",
           message:
             "Estado de envío marcado como inactivo porque tiene pedidos asociados",
-          data: { id: estadoEnvio.id, activo: false },
+          data: { id: estadoEnvio.id_estado, activo: false },
         });
       }
 
@@ -437,18 +386,18 @@ const createEstadoEnvioController = ({ EstadoEnvio, Pedido }) => {
 
       // Verificar si la transición es válida
       const esTransicionValida =
-        transicionesPermitidas[estadoActual.estado]?.includes(
-          estadoNuevo.estado,
+        transicionesPermitidas[estadoActual.nombre_estado]?.includes(
+          estadoNuevo.nombre_estado,
         ) || false;
 
       res.json({
         status: "success",
         data: {
           esTransicionValida,
-          estadoActual: estadoActual.estado,
-          estadoNuevo: estadoNuevo.estado,
+          estadoActual: estadoActual.nombre_estado,
+          estadoNuevo: estadoNuevo.nombre_estado,
           transicionesPermitidas:
-            transicionesPermitidas[estadoActual.estado] || [],
+            transicionesPermitidas[estadoActual.nombre_estado] || [],
         },
       });
     } catch (error) {

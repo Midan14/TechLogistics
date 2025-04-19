@@ -1,4 +1,4 @@
-// models/pedido.js
+// src/models/Pedido.js
 
 import { Model } from "sequelize";
 import { logError, logInfo } from "../config/logger.js";
@@ -6,90 +6,124 @@ import { logError, logInfo } from "../config/logger.js";
 export default (sequelize, DataTypes) => {
   class Pedido extends Model {
     static associate(models) {
-      Pedido.belongsTo(models.Cliente, {
-        foreignKey: "clienteId",
-        targetKey: "id",
-        as: "cliente",
-      });
+      // Verificar que todos los modelos necesarios existan
+      const requiredModels = [
+        "Cliente",
+        "Producto",
+        "Transportista",
+        "Ruta",
+        "EstadoEnvio",
+      ];
+      const missingModels = requiredModels.filter(
+        (modelName) => !models[modelName],
+      );
 
-      Pedido.belongsTo(models.Producto, {
-        foreignKey: "productoId",
-        targetKey: "id",
-        as: "producto",
-      });
+      if (missingModels.length > 0) {
+        logError(
+          `Modelos faltantes para las asociaciones de Pedido: ${missingModels.join(", ")}`,
+        );
+        return;
+      }
 
-      Pedido.belongsTo(models.Transportista, {
-        foreignKey: "transportistaId",
-        targetKey: "id",
-        as: "transportista",
-      });
+      try {
+        // Cliente
+        Pedido.belongsTo(models.Cliente, {
+          foreignKey: "id_cliente",
+          as: "cliente",
+          onDelete: "RESTRICT",
+          onUpdate: "CASCADE",
+        });
 
-      Pedido.belongsTo(models.Ruta, {
-        foreignKey: "rutaId",
-        targetKey: "id",
-        as: "ruta",
-      });
+        // Producto
+        Pedido.belongsTo(models.Producto, {
+          foreignKey: "id_producto",
+          as: "producto",
+          onDelete: "RESTRICT",
+          onUpdate: "CASCADE",
+        });
 
-      Pedido.belongsTo(models.EstadoEnvio, {
-        foreignKey: "estadoEnvioId",
-        targetKey: "idEstadoEnvio",
-        as: "estadoEnvio",
-      });
+        // Transportista
+        Pedido.belongsTo(models.Transportista, {
+          foreignKey: "id_transportista",
+          as: "transportista",
+          onDelete: "RESTRICT",
+          onUpdate: "CASCADE",
+        });
+
+        // Ruta
+        Pedido.belongsTo(models.Ruta, {
+          foreignKey: "id_ruta",
+          as: "ruta",
+          onDelete: "RESTRICT",
+          onUpdate: "CASCADE",
+        });
+
+        // EstadoEnvio
+        Pedido.belongsTo(models.EstadoEnvio, {
+          foreignKey: "id_estado",
+          as: "estadoEnvio",
+          onDelete: "RESTRICT",
+          onUpdate: "CASCADE",
+        });
+
+        logInfo("Asociaciones de Pedido establecidas correctamente");
+      } catch (error) {
+        logError("Error al establecer asociaciones de Pedido:", error);
+        throw error;
+      }
     }
 
     // Método para calcular el total del pedido
     async calcularTotal() {
-      const producto = await this.getProducto();
-      return this.cantidad * producto.precio;
+      try {
+        const producto = await this.getProducto();
+        if (!producto) {
+          throw new Error("Producto no encontrado");
+        }
+        return this.cantidad * producto.precio;
+      } catch (error) {
+        logError("Error al calcular total del pedido:", error);
+        throw error;
+      }
     }
 
-    // Método para verificar si se puede cancelar
-    puedeSerCancelado() {
-      const estadosPermitidos = ["PENDIENTE", "EN_PREPARACION"];
-      return estadosPermitidos.includes(this.estado);
+    // Método para verificar si el pedido puede ser cancelado
+    async puedeSerCancelado() {
+      const estadoActual = await this.getEstadoEnvio();
+      return ["PENDIENTE", "EN_PREPARACION"].includes(
+        estadoActual?.nombre_estado,
+      );
     }
   }
 
   Pedido.init(
     {
-      id: {
+      id_pedido: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
-        field: "id",
+        comment: "Identificador único del pedido",
       },
-      fechaPedido: {
-        type: DataTypes.DATE,
+      id_cliente: {
+        type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: DataTypes.NOW,
+        references: {
+          model: "clientes",
+          key: "id_cliente",
+        },
         validate: {
-          notNull: { msg: "La fecha del pedido es requerida" },
-          isDate: { msg: "Formato de fecha inválido" },
+          notNull: { msg: "El cliente es requerido" },
         },
       },
-      estado: {
-        type: DataTypes.ENUM(
-          "PENDIENTE",
-          "EN_PREPARACION",
-          "EN_RUTA",
-          "ENTREGADO",
-          "CANCELADO",
-        ),
+      id_producto: {
+        type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: "PENDIENTE",
+        references: {
+          model: "productos",
+          key: "id_producto",
+        },
         validate: {
-          isIn: {
-            args: [
-              [
-                "PENDIENTE",
-                "EN_PREPARACION",
-                "EN_RUTA",
-                "ENTREGADO",
-                "CANCELADO",
-              ],
-            ],
-            msg: "Estado no válido",
-          },
+          notNull: { msg: "El producto es requerido" },
         },
       },
       cantidad: {
@@ -104,153 +138,109 @@ export default (sequelize, DataTypes) => {
           },
         },
       },
-      clienteId: {
+      id_transportista: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        field: "idCliente",
-        validate: {
-          notNull: { msg: "El cliente es requerido" },
+        references: {
+          model: "transportistas",
+          key: "id_transportista",
         },
-      },
-      productoId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: "idProducto",
-        validate: {
-          notNull: { msg: "El producto es requerido" },
-        },
-      },
-      transportistaId: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        field: "idTransportista",
         validate: {
           notNull: { msg: "El transportista es requerido" },
         },
       },
-      rutaId: {
+      id_estado: {
         type: DataTypes.INTEGER,
         allowNull: false,
-        field: "idRuta",
+        references: {
+          model: "estados_envio",
+          key: "id_estado",
+        },
+        validate: {
+          notNull: { msg: "El estado es requerido" },
+        },
+      },
+      id_ruta: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        references: {
+          model: "rutas",
+          key: "id_ruta",
+        },
         validate: {
           notNull: { msg: "La ruta es requerida" },
         },
       },
-      estadoEnvioId: {
-        type: DataTypes.INTEGER,
+      fecha_pedido: {
+        type: DataTypes.DATE,
         allowNull: false,
-        field: "idEstadoEnvio",
+        defaultValue: DataTypes.NOW,
         validate: {
-          notNull: { msg: "El estado de envío es requerido" },
+          notNull: { msg: "La fecha del pedido es requerida" },
+          isDate: { msg: "Formato de fecha inválido" },
         },
-      },
-      observaciones: {
-        type: DataTypes.TEXT,
-        allowNull: true,
-      },
-      fechaEntregaEstimada: {
-        type: DataTypes.DATE,
-        allowNull: true,
-      },
-      fechaEntregaReal: {
-        type: DataTypes.DATE,
-        allowNull: true,
-      },
-      totalPedido: {
-        type: DataTypes.DECIMAL(10, 2),
-        allowNull: true,
       },
     },
     {
       sequelize,
       modelName: "Pedido",
-      tableName: "Pedidos",
-      timestamps: true, // Agregamos timestamps para auditoría
-      paranoid: true, // Soft deletes
+      tableName: "pedidos",
+      timestamps: true,
       indexes: [
         {
-          fields: ["fechaPedido"],
+          fields: ["fecha_pedido"],
         },
         {
-          fields: ["estado"],
+          fields: ["id_cliente"],
         },
         {
-          fields: ["clienteId"],
+          fields: ["id_transportista"],
         },
         {
-          fields: ["transportistaId"],
+          fields: ["id_estado"],
         },
       ],
       hooks: {
         beforeCreate: async (pedido) => {
-          pedido.fechaPedido = pedido.fechaPedido || new Date();
+          pedido.fecha_pedido = pedido.fecha_pedido || new Date();
         },
         afterCreate: async (pedido) => {
           logInfo("Nuevo pedido creado", {
-            pedidoId: pedido.id,
-            cliente: pedido.clienteId,
+            pedidoId: pedido.id_pedido,
+            cliente: pedido.id_cliente,
           });
-        },
-        beforeUpdate: async (pedido) => {
-          if (pedido.changed("estado")) {
-            logInfo("Cambio de estado en pedido", {
-              pedidoId: pedido.id,
-              estadoAnterior: pedido._previousDataValues.estado,
-              estadoNuevo: pedido.estado,
-            });
-          }
         },
       },
     },
   );
 
   // Métodos de clase
-  Pedido.findByCliente = async function (clienteId) {
+  Pedido.findByCliente = async function (idCliente) {
     return await this.findAll({
-      where: { clienteId },
+      where: { id_cliente: idCliente },
       include: ["producto", "estadoEnvio"],
     });
   };
 
-  // Métodos de instancia
-  Pedido.prototype.actualizarEstado = async function (
-    nuevoEstado,
-    observaciones = null,
-  ) {
-    const estadoAnterior = this.estado;
-    this.estado = nuevoEstado;
-    if (observaciones) {
-      this.observaciones = this.observaciones
-        ? `${this.observaciones}\n${observaciones}`
-        : observaciones;
-    }
-
-    if (nuevoEstado === "ENTREGADO") {
-      this.fechaEntregaReal = new Date();
-    }
-
-    await this.save();
-
-    logInfo("Estado de pedido actualizado", {
-      pedidoId: this.id,
-      estadoAnterior,
-      estadoNuevo: nuevoEstado,
-    });
-  };
-
-  // Scopes útiles
+  // Scopes comunes
   Pedido.addScope("pendientes", {
-    where: { estado: "PENDIENTE" },
+    where: {
+      id_estado: 1, // ID del estado PENDIENTE
+    },
   });
 
   Pedido.addScope("enProceso", {
     where: {
-      estado: ["EN_PREPARACION", "EN_RUTA"],
+      id_estado: {
+        [sequelize.Sequelize.Op.in]: [2, 3], // IDs de estados EN_PREPARACION y EN_RUTA
+      },
     },
   });
 
   Pedido.addScope("completos", {
-    where: { estado: "ENTREGADO" },
+    where: {
+      id_estado: 4, // ID del estado ENTREGADO
+    },
   });
 
   Pedido.addScope("conDetalles", {

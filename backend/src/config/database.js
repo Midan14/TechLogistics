@@ -2,7 +2,7 @@
 
 import { Sequelize } from "sequelize";
 import "dotenv/config";
-import { requiredEnvVars } from "./envVars.js";
+import { validateEnvVars } from "./envVars.js";
 import logger from "./logger.js";
 
 // Configuraciones según el entorno
@@ -19,16 +19,6 @@ const environments = {
     logging: false,
     debug: false,
   },
-};
-
-// Validar variables de entorno requeridas
-const validateEnvVars = () => {
-  const missingVars = requiredEnvVars.filter((envVar) => !process.env[envVar]);
-  if (missingVars.length > 0) {
-    throw new Error(
-      `❌ Variables de entorno no definidas: ${missingVars.join(", ")}`,
-    );
-  }
 };
 
 // Configuración base de Sequelize
@@ -56,8 +46,8 @@ const getSequelizeConfig = () => {
               rejectUnauthorized: false,
             }
           : undefined,
+      timezone: process.env.DB_TIMEZONE || "+00:00",
     },
-    timezone: process.env.DB_TIMEZONE || "+00:00",
     define: {
       timestamps: true,
       underscored: true,
@@ -77,18 +67,44 @@ const getSequelizeConfig = () => {
   };
 };
 
-// Inicializar Sequelize
+// Inicializar Sequelize con manejo de errores mejorado
 const initializeSequelize = () => {
-  validateEnvVars();
+  try {
+    // Validar variables de entorno antes de inicializar
+    validateEnvVars();
 
-  const config = getSequelizeConfig();
+    const config = getSequelizeConfig();
+    logger.debug("Configuración de Sequelize:", {
+      host: config.host,
+      port: config.port,
+      database: process.env.DB_NAME,
+      user: process.env.DB_USER,
+    });
 
-  return new Sequelize(
-    process.env.DB_NAME,
-    process.env.DB_USER,
-    process.env.DB_PASSWORD,
-    config,
-  );
+    const sequelize = new Sequelize(
+      process.env.DB_NAME,
+      process.env.DB_USER,
+      process.env.DB_PASSWORD,
+      config,
+    );
+
+    // Agregar manejadores de eventos
+    sequelize.afterConnect((connection) => {
+      logger.info("Conexión establecida con la base de datos");
+    });
+
+    sequelize.afterDisconnect(() => {
+      logger.info("Desconexión de la base de datos");
+    });
+
+    return sequelize;
+  } catch (error) {
+    logger.error("Error al inicializar Sequelize:", {
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
 };
 
 // Crear instancia de Sequelize
@@ -104,12 +120,18 @@ export const testConnection = async () => {
     logger.error("❌ Error de conexión a la base de datos:", {
       error: error.message,
       stack: error.stack,
+      config: {
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        database: process.env.DB_NAME,
+        user: process.env.DB_USER,
+      },
     });
     throw error;
   }
 };
 
-// Función para cerrar la conexión
+// Función para cerrar la conexión de manera segura
 export const closeConnection = async () => {
   try {
     await sequelize.close();
@@ -123,13 +145,39 @@ export const closeConnection = async () => {
   }
 };
 
-// Manejadores de eventos de la conexión
-sequelize.addHook("beforeConnect", async (config) => {
-  logger.debug("Intentando conectar a la base de datos...");
+// Función para sincronizar modelos con la base de datos
+export const syncDatabase = async (force = false) => {
+  try {
+    await sequelize.sync({ force });
+    logger.info(
+      `Base de datos ${force ? "recreada" : "sincronizada"} correctamente`,
+    );
+  } catch (error) {
+    logger.error("Error al sincronizar la base de datos:", {
+      error: error.message,
+      stack: error.stack,
+    });
+    throw error;
+  }
+};
+
+// Manejadores de eventos del proceso
+process.on("SIGINT", async () => {
+  try {
+    await closeConnection();
+    process.exit(0);
+  } catch (error) {
+    process.exit(1);
+  }
 });
 
-sequelize.addHook("afterConnect", async (connection) => {
-  logger.debug("Conexión establecida exitosamente");
+process.on("SIGTERM", async () => {
+  try {
+    await closeConnection();
+    process.exit(0);
+  } catch (error) {
+    process.exit(1);
+  }
 });
 
 export default sequelize;

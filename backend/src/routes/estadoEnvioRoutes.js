@@ -1,288 +1,515 @@
 // src/routes/estadoEnvioRoutes.js
 
-import express from "express";
-import { body, param, query, validationResult } from "express-validator";
-import createEstadoEnvioController from "../controllers/estadoEnvioController.js";
-import { authenticate, authorize } from "../middleware/authMiddleware.js";
-import { logRequest } from "../middleware/loggerMiddleware.js";
-import { cache } from "../middleware/cacheMiddleware.js";
+import { Router } from "express";
+import { check, validationResult } from "express-validator";
 
 /**
- * Configura las rutas para el recurso EstadoEnvio
- * @param {Object} models - Modelos de Sequelize necesarios
- * @returns {Router} Router de Express configurado
+ * @param {Object} param0 Objeto con modelos
+ * @returns {Router} Router configurado
  */
-export default ({ EstadoEnvio, Pedido }) => {
-  const router = express.Router();
+const estadoEnvioRoutes = ({ EstadoEnvio, Pedido }) => {
+  const router = Router();
 
-  // Obtener controladores con inyección de dependencias
-  const {
-    obtenerEstadosEnvio,
-    crearEstadoEnvio,
-    obtenerEstadoEnvioPorId,
-    actualizarEstadoEnvio,
-    eliminarEstadoEnvio,
-    inicializarEstadosEnvio,
-    obtenerPedidosPorEstado,
-  } = createEstadoEnvioController({ EstadoEnvio, Pedido });
-
-  // Middleware para validar errores
-  const validarErrores = (req, res, next) => {
-    const errores = validationResult(req);
-    if (!errores.isEmpty()) {
+  // Middleware de validación
+  const validateResult = (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
       return res.status(400).json({
         status: "error",
-        errores: errores.array(),
+        errores: errors.array(),
       });
     }
     next();
   };
 
-  // ✅ Validación para crear o actualizar un estado de envío
-  const validateEstadoInput = [
-    body("estado")
-      .isString()
-      .notEmpty()
-      .withMessage("El estado es obligatorio")
-      .isIn([
-        "PENDIENTE",
-        "PREPARACION",
-        "EN_RUTA",
-        "ENTREGADO",
-        "NO_ENTREGADO",
-        "CANCELADO",
-      ])
-      .withMessage("Estado no válido"),
-    body("descripcion")
-      .optional()
-      .isString()
-      .isLength({ min: 3, max: 100 })
-      .withMessage("La descripción debe tener entre 3 y 100 caracteres"),
-    body("color")
-      .optional()
-      .isString()
-      .matches(/^#[0-9A-Fa-f]{6}$/)
-      .withMessage(
-        "El color debe ser un código hexadecimal válido (ej: #FF0000)",
-      ),
-    body("orden")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("El orden debe ser un número entero positivo"),
-    body("activo")
-      .optional()
-      .isBoolean()
-      .withMessage("Activo debe ser un valor booleano"),
-    validarErrores,
-  ];
+  // Importar el controlador directamente en este archivo
+  function createEstadoEnvioController({ EstadoEnvio, Pedido }) {
+    const obtenerEstadosEnvio = async (req, res) => {
+      try {
+        const { activo } = req.query;
+        const where = {};
+        if (activo !== undefined) {
+          where.activo = activo === "true";
+        }
+        const estados = await EstadoEnvio.findAll({
+          where,
+          order: [["orden", "ASC"]],
+        });
+        res.json({
+          status: "success",
+          data: estados,
+        });
+      } catch (error) {
+        console.error("Error al obtener estados de envío", error);
+        res.status(500).json({
+          status: "error",
+          message: "Error al obtener estados de envío",
+          error: error.message,
+        });
+      }
+    };
 
-  // Validación para IDs
-  const validateId = [
-    param("id").isInt({ min: 1 }).withMessage("ID inválido"),
-    validarErrores,
-  ];
+    const inicializarEstadosEnvio = async (req, res) => {
+      try {
+        const estadosDefault = [
+          {
+            nombre_estado: "PENDIENTE",
+            descripcion: "Pedido registrado pendiente de preparación",
+            color: "#FFA500",
+            orden: 1,
+            activo: true,
+          },
+          {
+            nombre_estado: "PREPARACION",
+            descripcion: "Pedido en proceso de preparación",
+            color: "#0000FF",
+            orden: 2,
+            activo: true,
+          },
+          {
+            nombre_estado: "EN_RUTA",
+            descripcion: "Pedido en ruta de entrega",
+            color: "#008000",
+            orden: 3,
+            activo: true,
+          },
+          {
+            nombre_estado: "ENTREGADO",
+            descripcion: "Pedido entregado exitosamente",
+            color: "#008000",
+            orden: 4,
+            activo: true,
+          },
+          {
+            nombre_estado: "NO_ENTREGADO",
+            descripcion: "Entrega fallida",
+            color: "#FF0000",
+            orden: 5,
+            activo: true,
+          },
+          {
+            nombre_estado: "CANCELADO",
+            descripcion: "Pedido cancelado",
+            color: "#FF0000",
+            orden: 6,
+            activo: true,
+          },
+        ];
+
+        for (const estadoData of estadosDefault) {
+          await EstadoEnvio.findOrCreate({
+            where: { nombre_estado: estadoData.nombre_estado },
+            defaults: estadoData,
+          });
+        }
+
+        const estados = await EstadoEnvio.findAll({
+          order: [["orden", "ASC"]],
+        });
+
+        console.info("Estados de envío inicializados correctamente");
+
+        res.json({
+          status: "success",
+          message: "Estados de envío inicializados correctamente",
+          data: estados,
+        });
+      } catch (error) {
+        console.error("Error al inicializar estados de envío", error);
+        res.status(500).json({
+          status: "error",
+          message: "Error al inicializar estados de envío",
+          error: error.message,
+        });
+      }
+    };
+
+    const crearEstadoEnvio = async (req, res) => {
+      try {
+        const { estado, descripcion, color, orden, activo } = req.body;
+
+        const estadoExistente = await EstadoEnvio.findOne({
+          where: { nombre_estado: estado },
+        });
+
+        if (estadoExistente) {
+          return res.status(409).json({
+            status: "error",
+            message: "Ya existe un estado con este código",
+          });
+        }
+
+        const nuevoEstado = await EstadoEnvio.create({
+          nombre_estado: estado,
+          descripcion,
+          color: color || "#000000",
+          orden: orden || 0,
+          activo: activo === undefined ? true : activo,
+        });
+
+        console.info("Nuevo estado de envío creado", {
+          id: nuevoEstado.id_estado,
+          estado: nuevoEstado.nombre_estado,
+        });
+
+        res.status(201).json({
+          status: "success",
+          message: "Estado de envío creado correctamente",
+          data: nuevoEstado,
+        });
+      } catch (error) {
+        console.error("Error al crear estado de envío", error);
+
+        if (error.name === "SequelizeValidationError") {
+          return res.status(400).json({
+            status: "error",
+            message: "Error de validación",
+            errors: error.errors.map((e) => ({
+              field: e.path,
+              message: e.message,
+            })),
+          });
+        }
+
+        res.status(500).json({
+          status: "error",
+          message: "Error al crear estado de envío",
+          error: error.message,
+        });
+      }
+    };
+
+    const obtenerEstadoEnvioPorId = async (req, res) => {
+      try {
+        const estado = await EstadoEnvio.findByPk(req.params.id);
+
+        if (!estado) {
+          return res.status(404).json({
+            status: "error",
+            message: "Estado de envío no encontrado",
+          });
+        }
+
+        res.json({
+          status: "success",
+          data: estado,
+        });
+      } catch (error) {
+        console.error("Error al obtener estado de envío", error);
+        res.status(500).json({
+          status: "error",
+          message: "Error al obtener estado de envío",
+          error: error.message,
+        });
+      }
+    };
+
+    const obtenerPedidosPorEstado = async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { page = 1, limit = 10 } = req.query;
+
+        const estado = await EstadoEnvio.findByPk(id);
+        if (!estado) {
+          return res.status(404).json({
+            status: "error",
+            message: "Estado de envío no encontrado",
+          });
+        }
+
+        const { count, rows: pedidos } = await Pedido.findAndCountAll({
+          where: { estadoEnvioId: id },
+          limit: parseInt(limit),
+          offset: (parseInt(page) - 1) * parseInt(limit),
+          order: [["fechaPedido", "DESC"]],
+        });
+
+        const totalPages = Math.ceil(count / parseInt(limit));
+        const nextPage = page < totalPages ? parseInt(page) + 1 : null;
+        const prevPage = page > 1 ? parseInt(page) - 1 : null;
+
+        res.json({
+          status: "success",
+          data: pedidos,
+          meta: {
+            estado: estado.nombre_estado,
+            totalItems: count,
+            totalPages,
+            currentPage: parseInt(page),
+            itemsPerPage: parseInt(limit),
+            nextPage,
+            prevPage,
+          },
+        });
+      } catch (error) {
+        console.error("Error al obtener pedidos por estado", error);
+        res.status(500).json({
+          status: "error",
+          message: "Error al obtener pedidos por estado",
+          error: error.message,
+        });
+      }
+    };
+
+    const actualizarEstadoEnvio = async (req, res) => {
+      try {
+        const { estado, descripcion, color, orden, activo } = req.body;
+
+        const estadoEnvio = await EstadoEnvio.findByPk(req.params.id);
+        if (!estadoEnvio) {
+          return res.status(404).json({
+            status: "error",
+            message: "Estado de envío no encontrado",
+          });
+        }
+
+        if (estado && estado !== estadoEnvio.nombre_estado) {
+          const estadoExistente = await EstadoEnvio.findOne({
+            where: { nombre_estado: estado },
+          });
+
+          if (estadoExistente) {
+            return res.status(409).json({
+              status: "error",
+              message: "Ya existe un estado con este código",
+            });
+          }
+        }
+
+        await estadoEnvio.update({
+          nombre_estado: estado,
+          descripcion,
+          color,
+          orden,
+          activo,
+        });
+
+        console.info("Estado de envío actualizado", {
+          id: estadoEnvio.id_estado,
+          cambios: req.body,
+        });
+
+        res.json({
+          status: "success",
+          message: "Estado de envío actualizado correctamente",
+          data: estadoEnvio,
+        });
+      } catch (error) {
+        console.error("Error al actualizar estado de envío", error);
+
+        if (error.name === "SequelizeValidationError") {
+          return res.status(400).json({
+            status: "error",
+            message: "Error de validación",
+            errors: error.errors.map((e) => ({
+              field: e.path,
+              message: e.message,
+            })),
+          });
+        }
+
+        res.status(500).json({
+          status: "error",
+          message: "Error al actualizar estado de envío",
+          error: error.message,
+        });
+      }
+    };
+
+    const eliminarEstadoEnvio = async (req, res) => {
+      try {
+        const estadoEnvio = await EstadoEnvio.findByPk(req.params.id);
+        if (!estadoEnvio) {
+          return res.status(404).json({
+            status: "error",
+            message: "Estado de envío no encontrado",
+          });
+        }
+
+        const pedidosAsociados = await Pedido.count({
+          where: { estadoEnvioId: req.params.id },
+        });
+
+        if (pedidosAsociados > 0) {
+          await estadoEnvio.update({ activo: false });
+
+          console.info("Estado de envío marcado como inactivo", {
+            id: estadoEnvio.id_estado,
+            pedidosAsociados,
+          });
+
+          return res.json({
+            status: "success",
+            message:
+              "Estado de envío marcado como inactivo porque tiene pedidos asociados",
+            data: { id: estadoEnvio.id_estado, activo: false },
+          });
+        }
+
+        await estadoEnvio.destroy();
+
+        console.info("Estado de envío eliminado", {
+          id: req.params.id,
+        });
+
+        res.json({
+          status: "success",
+          message: "Estado de envío eliminado correctamente",
+          data: { id: parseInt(req.params.id) },
+        });
+      } catch (error) {
+        console.error("Error al eliminar estado de envío", error);
+        res.status(500).json({
+          status: "error",
+          message: "Error al eliminar estado de envío",
+          error: error.message,
+        });
+      }
+    };
+
+    const verificarTransicionEstado = async (req, res) => {
+      try {
+        const { estadoActualId, estadoNuevoId } = req.body;
+
+        if (!estadoActualId || !estadoNuevoId) {
+          return res.status(400).json({
+            status: "error",
+            message: "Se requieren los IDs de ambos estados",
+          });
+        }
+
+        const estadoActual = await EstadoEnvio.findByPk(estadoActualId);
+        const estadoNuevo = await EstadoEnvio.findByPk(estadoNuevoId);
+
+        if (!estadoActual || !estadoNuevo) {
+          return res.status(404).json({
+            status: "error",
+            message: "Uno o ambos estados no existen",
+          });
+        }
+
+        const transicionesPermitidas = {
+          PENDIENTE: ["PREPARACION", "CANCELADO"],
+          PREPARACION: ["EN_RUTA", "CANCELADO"],
+          EN_RUTA: ["ENTREGADO", "NO_ENTREGADO"],
+          ENTREGADO: [],
+          NO_ENTREGADO: ["EN_RUTA"],
+          CANCELADO: [],
+        };
+
+        const esTransicionValida =
+          transicionesPermitidas[estadoActual.nombre_estado]?.includes(
+            estadoNuevo.nombre_estado,
+          ) || false;
+
+        res.json({
+          status: "success",
+          data: {
+            esTransicionValida,
+            estadoActual: estadoActual.nombre_estado,
+            estadoNuevo: estadoNuevo.nombre_estado,
+            transicionesPermitidas:
+              transicionesPermitidas[estadoActual.nombre_estado] || [],
+          },
+        });
+      } catch (error) {
+        console.error("Error al verificar transición de estado", error);
+        res.status(500).json({
+          status: "error",
+          message: "Error al verificar transición de estado",
+          error: error.message,
+        });
+      }
+    };
+
+    return {
+      obtenerEstadosEnvio,
+      inicializarEstadosEnvio,
+      crearEstadoEnvio,
+      obtenerEstadoEnvioPorId,
+      actualizarEstadoEnvio,
+      eliminarEstadoEnvio,
+      obtenerPedidosPorEstado,
+      verificarTransicionEstado,
+    };
+  }
+
+  // Crea el controlador
+  const controlador = createEstadoEnvioController({ EstadoEnvio, Pedido });
 
   /**
-   * @swagger
-   * /api/estados-envio:
-   *   get:
-   *     summary: Obtiene todos los estados de envío
-   *     tags: [Estados]
-   *     parameters:
-   *       - in: query
-   *         name: activo
-   *         schema:
-   *           type: boolean
-   *         description: Filtrar por estados activos
-   *     responses:
-   *       200:
-   *         description: Lista de estados de envío
+   * @route GET /api/estados-envio
+   * @desc Obtener todos los estados de envío
+   * @access Public
    */
-  router.get(
-    "/",
-    cache(300), // Cachear durante 5 minutos
-    obtenerEstadosEnvio,
-  );
+  router.get("/", controlador.obtenerEstadosEnvio);
 
   /**
-   * @swagger
-   * /api/estados-envio/inicializar:
-   *   post:
-   *     summary: Inicializa los estados de envío predeterminados
-   *     tags: [Estados]
-   *     security:
-   *       - bearerAuth: []
-   *     responses:
-   *       200:
-   *         description: Estados inicializados correctamente
-   *       401:
-   *         description: No autorizado
+   * @route POST /api/estados-envio/inicializar
+   * @desc Inicializar estados de envío
+   * @access Admin
+   */
+  router.post("/inicializar", controlador.inicializarEstadosEnvio);
+
+  /**
+   * @route GET /api/estados-envio/:id
+   * @desc Obtener un estado de envío por ID
+   * @access Public
+   */
+  router.get("/:id", controlador.obtenerEstadoEnvioPorId);
+
+  /**
+   * @route GET /api/estados-envio/:id/pedidos
+   * @desc Obtener pedidos por estado
+   * @access Public
+   */
+  router.get("/:id/pedidos", controlador.obtenerPedidosPorEstado);
+
+  /**
+   * @route POST /api/estados-envio/verificar-transicion
+   * @desc Verificar si una transición de estado es válida
+   * @access Public
+   */
+  router.post("/verificar-transicion", controlador.verificarTransicionEstado);
+
+  /**
+   * @route POST /api/estados-envio
+   * @desc Crear un nuevo estado de envío
+   * @access Private
    */
   router.post(
-    "/inicializar",
-    authenticate,
-    authorize(["admin"]),
-    logRequest,
-    inicializarEstadosEnvio,
-  );
-
-  /**
-   * @swagger
-   * /api/estados-envio/{id}/pedidos:
-   *   get:
-   *     summary: Obtiene los pedidos con un estado específico
-   *     tags: [Estados]
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         schema:
-   *           type: integer
-   *         required: true
-   *     responses:
-   *       200:
-   *         description: Pedidos con el estado especificado
-   */
-  router.get("/:id/pedidos", authenticate, validateId, obtenerPedidosPorEstado);
-
-  /**
-   * @swagger
-   * /api/estados-envio:
-   *   post:
-   *     summary: Crea un nuevo estado de envío
-   *     tags: [Estados]
-   *     security:
-   *       - bearerAuth: []
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             required:
-   *               - estado
-   *             properties:
-   *               estado:
-   *                 type: string
-   *               descripcion:
-   *                 type: string
-   *               color:
-   *                 type: string
-   *               orden:
-   *                 type: integer
-   *     responses:
-   *       201:
-   *         description: Estado de envío creado correctamente
-   *       400:
-   *         description: Datos inválidos
-   */
-  router.post(
     "/",
-    authenticate,
-    authorize(["admin"]),
-    validateEstadoInput,
-    logRequest,
-    crearEstadoEnvio,
+    [
+      check("estado", "El código de estado es obligatorio").not().isEmpty(),
+      check("descripcion", "La descripción es obligatoria").not().isEmpty(),
+      validateResult,
+    ],
+    controlador.crearEstadoEnvio,
   );
 
   /**
-   * @swagger
-   * /api/estados-envio/{id}:
-   *   get:
-   *     summary: Obtiene un estado de envío por ID
-   *     tags: [Estados]
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         schema:
-   *           type: integer
-   *         required: true
-   *     responses:
-   *       200:
-   *         description: Estado de envío encontrado
-   *       404:
-   *         description: Estado de envío no encontrado
-   */
-  router.get("/:id", validateId, cache(300), obtenerEstadoEnvioPorId);
-
-  /**
-   * @swagger
-   * /api/estados-envio/{id}:
-   *   put:
-   *     summary: Actualiza un estado de envío
-   *     tags: [Estados]
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         schema:
-   *           type: integer
-   *         required: true
-   *     requestBody:
-   *       required: true
-   *       content:
-   *         application/json:
-   *           schema:
-   *             type: object
-   *             properties:
-   *               estado:
-   *                 type: string
-   *               descripcion:
-   *                 type: string
-   *               color:
-   *                 type: string
-   *               orden:
-   *                 type: integer
-   *               activo:
-   *                 type: boolean
-   *     responses:
-   *       200:
-   *         description: Estado de envío actualizado
-   *       400:
-   *         description: Datos inválidos
-   *       404:
-   *         description: Estado de envío no encontrado
+   * @route PUT /api/estados-envio/:id
+   * @desc Actualizar un estado de envío
+   * @access Private
    */
   router.put(
     "/:id",
-    authenticate,
-    authorize(["admin"]),
-    validateId,
-    validateEstadoInput,
-    logRequest,
-    actualizarEstadoEnvio,
+    [
+      check("estado", "El código de estado es obligatorio").not().isEmpty(),
+      check("descripcion", "La descripción es obligatoria").not().isEmpty(),
+      validateResult,
+    ],
+    controlador.actualizarEstadoEnvio,
   );
 
   /**
-   * @swagger
-   * /api/estados-envio/{id}:
-   *   delete:
-   *     summary: Elimina un estado de envío
-   *     tags: [Estados]
-   *     security:
-   *       - bearerAuth: []
-   *     parameters:
-   *       - in: path
-   *         name: id
-   *         schema:
-   *           type: integer
-   *         required: true
-   *     responses:
-   *       200:
-   *         description: Estado de envío eliminado
-   *       404:
-   *         description: Estado de envío no encontrado
+   * @route DELETE /api/estados-envio/:id
+   * @desc Eliminar un estado de envío
+   * @access Private
    */
-  router.delete(
-    "/:id",
-    authenticate,
-    authorize(["admin"]),
-    validateId,
-    logRequest,
-    eliminarEstadoEnvio,
-  );
+  router.delete("/:id", controlador.eliminarEstadoEnvio);
 
   return router;
 };
+
+export default estadoEnvioRoutes;

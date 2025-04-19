@@ -1,13 +1,13 @@
-// models/producto.js
+// src/models/Producto.js
 
 import { Model } from "sequelize";
-import { logError, logInfo } from "../config/logger.js";
+import { logInfo } from "../config/logger.js";
 
 export default (sequelize, DataTypes) => {
   class Producto extends Model {
     static associate(models) {
       Producto.hasMany(models.Pedido, {
-        foreignKey: "productoId",
+        foreignKey: "id_producto",
         as: "pedidos",
         onDelete: "RESTRICT",
         onUpdate: "CASCADE",
@@ -21,55 +21,39 @@ export default (sequelize, DataTypes) => {
 
     // Método para actualizar stock
     async actualizarStock(cantidad, tipo = "RESTAR") {
-      const stockAnterior = this.stock;
+      try {
+        const stockAnterior = this.stock;
 
-      if (tipo === "SUMAR") {
-        this.stock += cantidad;
-      } else {
-        if (this.stock < cantidad) {
-          throw new Error("Stock insuficiente");
+        if (tipo === "SUMAR") {
+          this.stock += cantidad;
+        } else {
+          if (this.stock < cantidad) {
+            throw new Error("Stock insuficiente");
+          }
+          this.stock -= cantidad;
         }
-        this.stock -= cantidad;
-      }
 
-      if (this.stock <= this.stockMinimo) {
-        logInfo("Alerta de stock bajo", {
-          productoId: this.id,
-          nombre: this.nombre,
-          stockActual: this.stock,
-          stockMinimo: this.stockMinimo,
+        await this.save();
+
+        logInfo("Stock actualizado", {
+          productoId: this.id_producto,
+          stockAnterior,
+          stockNuevo: this.stock,
+          tipo,
         });
+      } catch (error) {
+        throw new Error(`Error al actualizar stock: ${error.message}`);
       }
-
-      await this.save();
-
-      logInfo("Stock actualizado", {
-        productoId: this.id,
-        stockAnterior,
-        stockNuevo: this.stock,
-        tipo,
-      });
     }
   }
 
   Producto.init(
     {
-      id: {
+      id_producto: {
         type: DataTypes.INTEGER,
         primaryKey: true,
         autoIncrement: true,
         comment: "Identificador único del producto",
-      },
-      codigo: {
-        type: DataTypes.STRING(50),
-        allowNull: false,
-        unique: {
-          msg: "El código ya existe",
-        },
-        validate: {
-          notNull: { msg: "El código es requerido" },
-          notEmpty: { msg: "El código no puede estar vacío" },
-        },
       },
       nombre: {
         type: DataTypes.STRING(100),
@@ -121,104 +105,41 @@ export default (sequelize, DataTypes) => {
           },
         },
       },
-      stockMinimo: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-        defaultValue: 5,
-        validate: {
-          isInt: { msg: "El stock mínimo debe ser un número entero" },
-          min: {
-            args: [0],
-            msg: "El stock mínimo no puede ser negativo",
-          },
-        },
-      },
-      categoria: {
-        type: DataTypes.STRING(50),
-        allowNull: true,
-      },
-      imagen: {
-        type: DataTypes.STRING(255),
-        allowNull: true,
-        validate: {
-          isUrl: {
-            msg: "Debe ser una URL válida",
-          },
-        },
-      },
-      activo: {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: true,
-      },
     },
     {
       sequelize,
       modelName: "Producto",
-      tableName: "Productos",
+      tableName: "productos",
       timestamps: true,
-      paranoid: true,
       indexes: [
         {
-          unique: true,
-          fields: ["codigo"],
-        },
-        {
-          fields: ["categoria"],
-        },
-        {
-          fields: ["activo"],
+          fields: ["nombre"],
         },
       ],
       hooks: {
-        beforeCreate: async (producto) => {
-          producto.codigo = producto.codigo.toUpperCase();
-        },
-        afterCreate: async (producto) => {
-          logInfo("Nuevo producto creado", {
-            productoId: producto.id,
-            codigo: producto.codigo,
-            nombre: producto.nombre,
-          });
+        beforeValidate: (producto) => {
+          if (producto.nombre) {
+            producto.nombre = producto.nombre.trim();
+          }
         },
       },
     },
   );
 
   // Métodos de clase
-  Producto.findByCodigo = async function (codigo) {
+  Producto.findByNombre = async function (nombre) {
     return await this.findOne({
-      where: {
-        codigo: codigo.toUpperCase(),
-        activo: true,
-      },
-    });
-  };
-
-  Producto.findByCategoria = async function (categoria) {
-    return await this.findAll({
-      where: {
-        categoria,
-        activo: true,
-      },
+      where: { nombre: nombre.trim() },
     });
   };
 
   // Scopes comunes
-  Producto.addScope("activos", {
-    where: { activo: true },
-  });
-
   Producto.addScope("conStock", {
     where: {
       stock: {
-        [sequelize.Op.gt]: 0,
+        [sequelize.Sequelize.Op.gt]: 0,
       },
     },
-  });
-
-  Producto.addScope("stockBajo", {
-    where: sequelize.literal("stock <= stockMinimo"),
   });
 
   Producto.addScope("completo", {
